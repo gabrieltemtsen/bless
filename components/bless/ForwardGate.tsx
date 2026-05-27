@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BlessingComposer } from '@/components/bless/BlessingComposer';
+import { ProfileChip } from '@/components/profile/ProfileChip';
 import { useWallet } from '@/hooks/use-wallet';
-import { shortenAddress } from '@/lib/format';
 import type { Hex } from '@/lib/types';
 
 /**
@@ -53,14 +53,17 @@ export function ForwardGate({
 
   if (address.toLowerCase() !== holder.toLowerCase()) {
     return (
-      <div className="rounded-2xl bg-muted/60 px-4 py-6 text-center text-sm">
-        <p>
-          Only the current holder ({' '}
-          <span className="font-mono">{shortenAddress(holder)}</span> ) can
-          forward this chain. You are signed in as{' '}
-          <span className="font-mono">{shortenAddress(address)}</span>.
-        </p>
-        <Link href={`/chain/${chainId}`} className="mt-3 inline-block">
+      <div className="flex flex-col items-center gap-3 rounded-2xl bg-muted/60 px-4 py-6 text-center text-sm">
+        <p>Only the current holder can forward this chain.</p>
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs">
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            holder: <ProfileChip address={holder} variant="sm" hideAddress />
+          </span>
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            you: <ProfileChip address={address} variant="sm" hideAddress />
+          </span>
+        </div>
+        <Link href={`/chain/${chainId}`}>
           <Button variant="outline">View chain history</Button>
         </Link>
       </div>

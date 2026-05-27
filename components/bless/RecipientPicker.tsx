@@ -7,7 +7,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ProfileChip } from '@/components/profile/ProfileChip';
 import { useWallet } from '@/hooks/use-wallet';
 import { isTrustedBy } from '@/lib/circles';
-import { shortenAddress } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { isAddress } from 'viem';
 
@@ -163,9 +162,10 @@ export function RecipientPicker({
       </div>
 
       {value && (
-        <p className="rounded-xl bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-          Selected: <span className="font-mono">{shortenAddress(value)}</span>
-        </p>
+        <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
+          <span className="font-medium">Selected:</span>
+          <ProfileChip address={value} variant="sm" hideAddress />
+        </div>
       )}
     </div>
   );

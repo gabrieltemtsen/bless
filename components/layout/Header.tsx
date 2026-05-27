@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { BlessLogo } from '@/components/brand/BlessLogo';
 import { MobileNav } from '@/components/layout/MobileNav';
+import { BackTheDev } from '@/components/wallet/BackTheDev';
 import { WalletStatus } from '@/components/wallet/WalletStatus';
 
 export function Header() {
@@ -13,10 +14,16 @@ export function Header() {
           <span className="hidden text-base sm:inline">Bless</span>
         </Link>
         <span className="hidden text-xs text-muted-foreground sm:inline">
-          · pay-it-forward on Circles
+          · trust, made spendable
         </span>
       </div>
-      <WalletStatus />
+      <div className="flex items-center gap-3">
+        {/* "Trust gabriel" lives in the header so visitors who want to
+            back the maker can do it from any page — and the sidebar
+            credit is still there for the desktop browsing case. */}
+        <BackTheDev variant="pill" className="hidden sm:inline-flex" />
+        <WalletStatus />
+      </div>
     </header>
   );
 }

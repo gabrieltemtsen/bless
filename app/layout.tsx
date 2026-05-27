@@ -9,13 +9,13 @@ const geistSans = Geist({ variable: '--font-sans', subsets: ['latin'] });
 const geistMono = Geist_Mono({ variable: '--font-mono', subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Bless — pay-it-forward on Circles',
+  title: 'Bless — appreciation, on Circles trust',
   description:
-    'A Circles mini-app for pay-it-forward CRC blessings. Receive a blessing, add your story, forward to someone you trust within 48 hours — or the chain wilts.',
+    'Send a small CRC blessing + one sentence to someone you trust. For gratitude, a task done, a kindness, a gift. If they bless someone back within 48h, the chain grows.',
   openGraph: {
-    title: 'Bless — pay-it-forward on Circles',
+    title: 'Bless — appreciation, on Circles trust',
     description:
-      'Receive a blessing, add your story, forward it within 48 hours to someone you trust.',
+      'Trust, made spendable. Bless people on Circles for anything worth saying thanks for.',
     type: 'website',
   },
 };

@@ -75,7 +75,42 @@ const HUB_V2_ABI = [
     ],
     outputs: [{ name: '', type: 'bool' }],
   },
+  {
+    type: 'function',
+    name: 'trust',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: '_trustReceiver', type: 'address' },
+      { name: '_expiry', type: 'uint96' },
+    ],
+    outputs: [],
+  },
 ] as const;
+
+/**
+ * Hub v2 `trust(address, uint96 expiry)` interprets `expiry` as a unix
+ * timestamp (seconds). `uint96.max` is the largest legal value and lands
+ * roughly in the year 2.5 quintillion CE — i.e. forever. We use it as
+ * the "indefinite trust" sentinel.
+ */
+export const INDEFINITE_TRUST_EXPIRY: bigint = (1n << 96n) - 1n;
+
+/**
+ * Build the calldata for trusting `receiver` indefinitely — handed to the
+ * Circles host's `sendTransactions()` to be routed through the user's Safe.
+ */
+export function buildTrustTx(args: {
+  trustReceiver: Address;
+  expiry?: bigint;
+}): { to: Address; data: Hex; value: string } {
+  const expiry = args.expiry ?? INDEFINITE_TRUST_EXPIRY;
+  const data = encodeFunctionData({
+    abi: HUB_V2_ABI,
+    functionName: 'trust',
+    args: [args.trustReceiver, expiry],
+  });
+  return { to: HUB_V2_ADDRESS, data, value: '0' };
+}
 
 /**
  * Build the calldata for transferring `amount` CRC of `from`'s personal

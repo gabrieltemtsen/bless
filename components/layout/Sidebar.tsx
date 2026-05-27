@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { BackTheDev } from '@/components/wallet/BackTheDev';
 import { NAV } from '@/lib/nav';
 import { cn } from '@/lib/utils';
 
@@ -9,7 +10,7 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden border-r border-border/60 bg-sidebar/40 p-3 md:block">
+    <aside className="hidden flex-col border-r border-border/60 bg-sidebar/40 p-3 md:flex">
       <nav className="flex flex-col gap-1">
         {NAV.map((item) => {
           const isActive =
@@ -36,9 +37,15 @@ export function Sidebar() {
       <div className="mt-6 rounded-2xl border border-border/60 bg-background/60 p-3 text-xs text-muted-foreground">
         <p className="mb-1 font-medium text-foreground">How it works</p>
         <p className="leading-relaxed">
-          Receive a blessing, add your story, forward it within 48h to someone
-          you trust. Otherwise the chain wilts and your kindness debt grows.
+          Bless someone for anything worth saying thanks for — a kindness, a
+          task done, a gift, a chain paid forward. Travels only along the
+          people you&apos;ve trusted in Circles. If they bless someone back
+          within 48h, the chain grows.
         </p>
+      </div>
+
+      <div className="mt-auto pt-6">
+        <BackTheDev />
       </div>
     </aside>
   );

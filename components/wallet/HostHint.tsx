@@ -16,7 +16,7 @@ export function HostHint() {
     <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
       <p className="font-medium">You&apos;re browsing standalone.</p>
       <p className="mt-1 leading-relaxed text-amber-900/90">
-        Open Bless inside the{' '}
+        Bless rides on your Circles wallet. Open it inside the{' '}
         <a
           href="https://circles.gnosis.io/playground"
           target="_blank"
@@ -26,7 +26,7 @@ export function HostHint() {
           Circles host
           <ExternalLink className="size-3" />
         </a>{' '}
-        to send and forward real blessings with your Circles avatar.
+        to send real blessings — and to use the one-tap Trust button.
       </p>
     </div>
   );

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Flower2, Sparkles } from 'lucide-react';
+import { Heart, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { HostHint } from '@/components/wallet/HostHint';
 import { GardenFeed } from '@/components/bless/GardenFeed';
@@ -21,25 +21,28 @@ export default function GardenPage() {
         />
         <div className="relative flex flex-col items-start gap-5">
           <span className="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-white/80 px-3 py-1 text-xs font-medium text-rose-700">
-            <Flower2 className="size-3.5" /> built on Circles · Gnosis Chain
+            <Heart className="size-3.5 fill-current" /> trust, made spendable
           </span>
           <h1 className="max-w-2xl text-3xl font-semibold tracking-tight md:text-5xl">
-            A blessing is a story{' '}
+            Bless someone — for{' '}
             <span className="bg-gradient-to-br from-rose-500 via-amber-500 to-violet-600 bg-clip-text text-transparent">
-              that must keep walking.
+              anything worth saying thanks for.
             </span>
           </h1>
           <p className="max-w-2xl text-base text-foreground/70 md:text-lg">
-            Send a few CRC and a sentence to someone you trust. They have{' '}
-            <strong className="text-foreground">48 hours</strong> to add their
-            own story and forward it to someone <em>they</em> trust. Otherwise
-            the chain wilts — kindness is a fragile thing. The Circles trust
-            graph is the soil it grows in.
+            Circles is a currency built on people trusting people. Bless turns
+            that trust into kindness you can send. A gratitude. A task done. A
+            kindness returned. A favour paid forward. CRC + one sentence,
+            travelling along the people you&apos;ve actually trusted in real
+            life. If the recipient is moved to bless someone back within{' '}
+            <strong className="text-foreground">48 hours</strong>, the chain
+            grows. If not, your thanks just stands on its own — still real,
+            still seen.
           </p>
           <div className="flex flex-wrap gap-3 pt-1">
             <Link href="/bless">
               <Button size="lg">
-                <Sparkles /> Start a blessing
+                <Sparkles /> Send a blessing
               </Button>
             </Link>
             <Link href="/inbox">
@@ -55,10 +58,11 @@ export default function GardenPage() {
       <section className="flex flex-col gap-3">
         <header>
           <h2 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
-            <Flower2 className="size-5 text-rose-500" /> The garden
+            <Heart className="size-5 fill-rose-400 text-rose-400" /> The garden
           </h2>
           <p className="text-sm text-muted-foreground">
-            Every chain currently alive, freshest first. Tap any bloom to see its lineage.
+            Every blessing currently alive, freshest first. Tap one to see who
+            it&apos;s travelled through.
           </p>
         </header>
         <GardenFeed />

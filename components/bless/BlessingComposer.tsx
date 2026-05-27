@@ -50,12 +50,48 @@ function explainSendError(raw: string): string {
   return raw;
 }
 
-const SAMPLE_PROMPTS = [
-  'A stranger paid for my coffee this week. Passing it on.',
-  'For the friend who listened when I had no words.',
-  'For the teacher who believed in me before I did.',
-  'Because someone fed me when I was broke. Your turn.',
-  'In memory of a small kindness that changed everything.',
+interface BlessKind {
+  emoji: string;
+  label: string;
+  prompt: string;
+}
+
+/**
+ * Category presets — taps fill the story field with a starter line.
+ * Each one is a real thing humans say to each other; trust just makes
+ * it spendable.
+ */
+const BLESS_KINDS: BlessKind[] = [
+  {
+    emoji: '🙏',
+    label: 'Gratitude',
+    prompt: 'Thank you for ',
+  },
+  {
+    emoji: '✨',
+    label: 'A kindness',
+    prompt: 'You didn’t have to, but you did — ',
+  },
+  {
+    emoji: '💼',
+    label: 'A task done',
+    prompt: 'For the [task] you helped me with — properly done.',
+  },
+  {
+    emoji: '🎁',
+    label: 'A gift',
+    prompt: 'Just because. Happy ',
+  },
+  {
+    emoji: '🤝',
+    label: 'An apology',
+    prompt: 'I’m sorry for ',
+  },
+  {
+    emoji: '🌱',
+    label: 'Pay it forward',
+    prompt: 'Passing on what was given to me. Your turn.',
+  },
 ];
 
 /**
@@ -257,26 +293,26 @@ export function BlessingComposer({
       {/* Story */}
       <section className="flex flex-col gap-2">
         <Label htmlFor="story">Why this blessing?</Label>
+        <div className="flex flex-wrap gap-1.5">
+          {BLESS_KINDS.map((k) => (
+            <button
+              key={k.label}
+              type="button"
+              onClick={() => setStory(k.prompt)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 text-xs font-medium text-foreground/80 transition-colors hover:border-rose-200 hover:bg-rose-50"
+            >
+              <span aria-hidden>{k.emoji}</span> {k.label}
+            </button>
+          ))}
+        </div>
         <Textarea
           id="story"
           value={story}
           onChange={(e) => setStory(e.target.value)}
           maxLength={280}
-          placeholder="One short sentence the next person will read…"
+          placeholder="One short sentence the recipient will read — and the chain will carry…"
           rows={3}
         />
-        <div className="flex flex-wrap gap-1">
-          {SAMPLE_PROMPTS.map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => setStory(p)}
-              className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground hover:bg-accent"
-            >
-              {p.slice(0, 36)}…
-            </button>
-          ))}
-        </div>
         <p className="text-right text-[10px] text-muted-foreground">
           {story.length}/280
         </p>
