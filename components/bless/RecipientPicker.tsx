@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProfileChip } from '@/components/profile/ProfileChip';
 import { useWallet } from '@/hooks/use-wallet';
-import { isTrusted } from '@/lib/circles';
+import { isTrustedBy } from '@/lib/circles';
 import { shortenAddress } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { isAddress } from 'viem';
@@ -45,15 +45,17 @@ export function RecipientPicker({
       try {
         const { Sdk } = await import('@aboutcircles/sdk');
         const sdk = new Sdk();
-        // Aggregated relations include `trusts`, `trustedBy`, and `mutuallyTrusts`.
-        // We surface only outgoing trust (i.e. people *I* have trusted) because
-        // those are addresses whose tokens I will be able to swap onward —
-        // exactly the recipients who'll be able to spend the CRC I send.
+        // Circles v2 acceptance rule for direct ERC1155 transfers:
+        //   the *recipient* must trust the *issuer* of the token being sent.
+        // We're sending the sender's own personal CRC, so the recipient must
+        // have trusted the sender. That means we want people who've trusted
+        // *us* — `trustedBy` and `mutuallyTrusts` rows. Anything else and
+        // Hub v2 will revert the transfer at simulation time.
         const rel = await sdk.rpc.trust.getAggregatedTrustRelations(address);
         if (cancelled) return;
         const rows: TrustRow[] = (rel ?? [])
           .filter(
-            (r) => r.relation === 'trusts' || r.relation === 'mutuallyTrusts'
+            (r) => r.relation === 'trustedBy' || r.relation === 'mutuallyTrusts'
           )
           .map((r) => ({ address: r.objectAvatar.toLowerCase() as Hex }));
         setTrusts(rows);
@@ -83,12 +85,13 @@ export function RecipientPicker({
     return q.toLowerCase() as Hex;
   }, [query]);
 
-  // If the user pasted a custom address, async-check whether they trust it.
+  // If the user pasted a custom address, check whether *they* trust *us* —
+  // that's the on-chain prerequisite for accepting our CRC.
   useEffect(() => {
     setPastedTrustOk(null);
     if (!pasteCandidate || !address) return;
     let cancelled = false;
-    isTrusted(address, pasteCandidate).then((ok) => {
+    isTrustedBy(address, pasteCandidate).then((ok) => {
       if (!cancelled) setPastedTrustOk(ok);
     });
     return () => {
@@ -125,8 +128,8 @@ export function RecipientPicker({
             pastedTrustOk === null
               ? 'Checking trust…'
               : pastedTrustOk
-              ? 'You trust this address ✓'
-              : '⚠ You don’t trust this address yet'
+              ? 'They trust you ✓'
+              : '⚠ They haven’t trusted you — transfer will revert'
           }
           warn={pastedTrustOk === false}
         />
@@ -145,7 +148,7 @@ export function RecipientPicker({
           <div className="rounded-2xl border border-dashed border-border bg-background/60 px-4 py-6 text-center text-sm text-muted-foreground">
             <AlertCircle className="mx-auto mb-1 size-4" />
             {trusts.length === 0
-              ? 'No trusted avatars yet. Add a trust in the Circles app first, then come back.'
+              ? "Nobody trusts you yet. Ask a friend to add your address in the Circles app, then come back — they have to trust you before they can receive your CRC."
               : 'No matches — try pasting an address.'}
           </div>
         )}

@@ -111,6 +111,40 @@ export async function isTrusted(truster: Address, trustee: Address): Promise<boo
   }
 }
 
+/**
+ * Asks the question that actually matters for *sending* CRC: does
+ * `recipient` trust `sender`? In Circles v2 a direct ERC-1155 transfer of
+ * `sender`'s personal CRC is rejected by the Hub unless the recipient has
+ * trusted the sender — trust direction is "I'll accept your CRC".
+ */
+export function isTrustedBy(sender: Address, recipient: Address): Promise<boolean> {
+  return isTrusted(recipient, sender);
+}
+
+/**
+ * Pre-flight balance check — true if `holder` owns at least `amount` CRC of
+ * `tokenIssuer`'s personal token. Pass `tokenIssuer = holder` to ask about
+ * your own personal CRC balance.
+ */
+export async function hasCrcBalance(
+  holder: Address,
+  tokenIssuer: Address,
+  amount: string | number
+): Promise<{ ok: boolean; balanceWei: bigint; neededWei: bigint }> {
+  const neededWei = parseUnits(String(amount), CRC_DECIMALS);
+  try {
+    const balanceWei = (await publicClient.readContract({
+      address: HUB_V2_ADDRESS,
+      abi: HUB_V2_ABI,
+      functionName: 'balanceOf',
+      args: [holder, addressToTokenId(tokenIssuer)],
+    })) as bigint;
+    return { ok: balanceWei >= neededWei, balanceWei, neededWei };
+  } catch {
+    return { ok: false, balanceWei: 0n, neededWei };
+  }
+}
+
 /** Verify an EIP-1271 signature against a Safe — used to authenticate API writes. */
 export async function verifyHostSignature(args: {
   signer: Address;

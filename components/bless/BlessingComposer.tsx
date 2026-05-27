@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RecipientPicker } from '@/components/bless/RecipientPicker';
 import { useWallet } from '@/hooks/use-wallet';
-import { buildBlessingTx } from '@/lib/circles';
+import { buildBlessingTx, hasCrcBalance, isTrustedBy } from '@/lib/circles';
+import { formatCrc } from '@/lib/format';
 
 type Hex = `0x${string}`;
 
@@ -19,11 +20,35 @@ type Mode =
 
 type Status =
   | { kind: 'idle' }
+  | { kind: 'preflight' }
   | { kind: 'signing' }
   | { kind: 'sending' }
   | { kind: 'recording' }
   | { kind: 'done'; chainId: string }
   | { kind: 'error'; error: string };
+
+const BLOCK_EXPLORER = 'https://gnosisscan.io';
+
+/**
+ * Friendlier explanations for the most common host-side reverts. We can't
+ * decode every selector, but we can guide the user toward the fix.
+ */
+function explainSendError(raw: string): string {
+  const lower = raw.toLowerCase();
+  if (lower.includes('useroperation reverted') || lower.includes('execution reverted')) {
+    return (
+      'The Circles Hub refused this transfer. The most likely cause is ' +
+      'that the recipient hasn’t trusted you yet, or your account hasn’t ' +
+      'minted any personal CRC. Both are easy fixes — open the Circles ' +
+      'app, ask your recipient to trust your address, and mint your daily ' +
+      'CRC if you haven’t.'
+    );
+  }
+  if (lower.includes('user rejected') || lower.includes('rejected')) {
+    return 'You declined the signature in the Circles host. Try again when ready.';
+  }
+  return raw;
+}
 
 const SAMPLE_PROMPTS = [
   'A stranger paid for my coffee this week. Passing it on.',
@@ -61,21 +86,57 @@ export function BlessingComposer({
   const [chainTitle, setChainTitle] = useState('');
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
 
+  const inFlight =
+    status.kind === 'preflight' ||
+    status.kind === 'signing' ||
+    status.kind === 'sending' ||
+    status.kind === 'recording';
+
   const disabled =
     !isConnected ||
     !address ||
     !recipient ||
     story.trim().length === 0 ||
     Number(amount) <= 0 ||
-    status.kind === 'signing' ||
-    status.kind === 'sending' ||
-    status.kind === 'recording';
+    inFlight;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!address || !recipient) return;
 
     try {
+      // 0. Pre-flight: avoid sending a UserOperation we know will revert.
+      //    These two RPC reads catch the two most common host-side errors
+      //    ("recipient hasn't trusted you" + "you have no CRC to send")
+      //    before they reach the Circles host as raw simulation reverts.
+      setStatus({ kind: 'preflight' });
+
+      const [trusts, balance] = await Promise.all([
+        isTrustedBy(address, recipient),
+        hasCrcBalance(address, address, amount),
+      ]);
+
+      if (!trusts) {
+        throw new Error(
+          'This recipient hasn’t trusted you in Circles yet. Until they do, ' +
+            'the Hub won’t let them receive your personal CRC. Ask them to add ' +
+            'your address (' +
+            address.slice(0, 6) +
+            '…' +
+            address.slice(-4) +
+            ') in the Circles app, then try again.'
+        );
+      }
+      if (!balance.ok) {
+        throw new Error(
+          'You only have ' +
+            formatCrc(Number(balance.balanceWei) / 1e18) +
+            ' CRC of your own personal token, but this blessing needs ' +
+            amount +
+            '. Mint your daily CRC in the Circles app first.'
+        );
+      }
+
       // 1. Build the on-chain CRC transfer (Hub v2 ERC1155 safeTransferFrom).
       const tx = buildBlessingTx({ from: address, to: recipient, amount });
 
@@ -132,7 +193,7 @@ export function BlessingComposer({
     } catch (err) {
       setStatus({
         kind: 'error',
-        error: err instanceof Error ? err.message : 'Unknown error',
+        error: explainSendError(err instanceof Error ? err.message : 'Unknown error'),
       });
     }
   }
@@ -238,6 +299,11 @@ export function BlessingComposer({
       {/* Action */}
       <div className="flex flex-col gap-2">
         <Button type="submit" disabled={disabled} size="lg">
+          {status.kind === 'preflight' && (
+            <>
+              <Loader2 className="animate-spin" /> Checking the trust graph…
+            </>
+          )}
           {status.kind === 'signing' && (
             <>
               <Loader2 className="animate-spin" /> Waiting for your signature…

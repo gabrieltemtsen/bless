@@ -19,9 +19,12 @@ them moving.
 
 Bless leans on the three primitives Circles is built around:
 
-- **Trust graph as the spreading medium.** A recipient picker that only
-  surfaces avatars the sender has actually trusted in the Hub v2 contract.
-  The CRC will be spendable downstream because the social path exists.
+- **Trust graph as the spreading medium.** Hub v2's acceptance rule is
+  "I'll accept your CRC iff I've trusted you" — so the recipient picker
+  surfaces avatars that have trusted *you*, the sender. Anything else and
+  the Hub will revert the transfer at simulation, which we also pre-flight
+  on the client with `isTrusted(recipient, sender)` before ever asking the
+  host to sign.
 - **Personal CRC as the carrier.** Each forward is a real ERC-1155
   `safeTransferFrom` on the Circles Hub v2 (`0xc12C…d13e8`) — the sender's
   own personal token, identified by `uint256(senderAddress)`.
@@ -69,12 +72,15 @@ verifiable receipt; the off-chain story is the soul.
   `isTrusted()`, `verifyHostSignature()`.
 - `lib/store.ts` — Tiny KV adapter with memory + Upstash backends; no
   schema migrations to write.
-- `components/bless/RecipientPicker.tsx` — fetches your trust list from
-  the Circles SDK, lets you paste arbitrary addresses but warns when
-  they're untrusted.
+- `components/bless/RecipientPicker.tsx` — fetches your *incoming* trust
+  list from the Circles SDK (the people who'll actually accept your CRC),
+  lets you paste arbitrary addresses but warns visibly when they haven't
+  trusted you yet.
 - `components/bless/BlessingComposer.tsx` — the one form used by both
-  starting a chain and forwarding one; submits the on-chain tx, signs an
-  attestation, then POSTs to our API.
+  starting a chain and forwarding one. Pre-flights two RPC reads
+  (`isTrusted(recipient, sender)` and `balanceOf(sender, sender'sTokenId)`)
+  to catch the two most common revert causes before the host sees them,
+  then submits the on-chain tx, signs an attestation, and POSTs to our API.
 - `app/api/chains/.../route.ts` — REST endpoints; every write is gated by
   an EIP-1271 host signature that references both the txHash and the
   recipient, so a leaked signature can't be replayed against anything else.
