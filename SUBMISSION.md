@@ -8,17 +8,17 @@ Bless
 
 ## One-line pitch (≤140 chars)
 
-A pay-it-forward CRC chain: pass a small blessing and a story to someone you trust within 48 hours — or the chain wilts.
+Bless turns Circles trust into appreciation you can send. CRC + a sentence — for gratitude, a task done, a kindness. Chains grow for 48h.
 
 ## Longer pitch (≤500 chars)
 
-Bless turns the Circles trust graph into a living record of small
-kindnesses. You send a few CRC and one sentence to someone you trust.
-They have 48 hours to add their own sentence and forward it to someone
-*they* trust. Otherwise the chain wilts publicly. Every link is a real
-ERC-1155 transfer on Hub v2; every story is rendered as a lineage tree.
-Built with `@aboutcircles/miniapp-sdk` (host bridge) and
-`@aboutcircles/sdk` (trust graph, profiles).
+Bless makes the Circles trust graph spendable as kindness. Send a few CRC
++ one sentence to someone who's trusted you on Circles — for gratitude,
+a favour returned, a task done, a gift. If they bless someone back along
+the chain within 48h, the chain grows into a public lineage of stories.
+If not, your thanks stands on its own. Every link is a real ERC-1155
+transfer on Hub v2. Built with `@aboutcircles/miniapp-sdk` (host bridge)
+and `@aboutcircles/sdk` (trust graph, profiles).
 
 ## Live URL
 
@@ -30,9 +30,13 @@ Built with `@aboutcircles/miniapp-sdk` (host bridge) and
 
 ## What Circles primitives does this use?
 
-- **Trust graph** — recipient picker queries `getAggregatedTrustRelations`
-  and only lists addresses the sender already trusts. Custom addresses
-  trigger an `isTrusted()` check and a visible warning when they're not.
+- **Trust graph** — Hub v2's acceptance rule is "I'll accept your CRC iff
+  I've trusted you", so the recipient picker queries
+  `getAggregatedTrustRelations` and filters for `trustedBy` +
+  `mutuallyTrusts` — i.e. people who've trusted the sender. Custom paste
+  addresses trigger an `isTrusted(recipient, sender)` check and a visible
+  warning when they'll revert. Plus a one-tap **Trust gabriel** pill in
+  the header so any visitor can extend the maker's circle.
 - **Personal CRC** — every forward is an actual
   `Hub_v2.safeTransferFrom(sender, recipient, uint256(sender), amount, '0x')`,
   routed through the host's Safe via `sendTransactions()`.

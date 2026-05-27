@@ -76,7 +76,7 @@ export function ForwardGate({
       defaultAmount={amount}
       amountLocked
       title="Add your story"
-      subtitle="One sentence. Then pass it to someone you trust."
+      subtitle="One sentence. Then pass it to someone who's trusted you."
     />
   );
 }

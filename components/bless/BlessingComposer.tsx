@@ -97,9 +97,10 @@ const BLESS_KINDS: BlessKind[] = [
 /**
  * Shared form for *starting a chain* and *forwarding an existing one*.
  *
- * Both flows are identical from the UX side: pick someone you trust,
- * write a note, send N CRC. The only difference is whether we POST to
- * /api/chains (new chain) or /api/chains/{id}/forward (existing chain).
+ * Both flows are identical from the UX side: pick someone who's trusted
+ * you (the on-chain acceptance rule), write a note, send N CRC. The only
+ * difference is whether we POST to /api/chains (new chain) or
+ * /api/chains/{id}/forward (existing chain).
  */
 export function BlessingComposer({
   mode,
@@ -243,10 +244,11 @@ export function BlessingComposer({
 
       {/* Recipient */}
       <section className="flex flex-col gap-2">
-        <Label>Send to someone you trust</Label>
+        <Label>Send to someone who&apos;s trusted you</Label>
         <p className="text-xs text-muted-foreground">
-          Only addresses inside your Circles trust list show up — anyone else
-          might not be able to spend the CRC you send them.
+          In Circles you can only send your CRC to people who&apos;ve trusted
+          you back — that&apos;s the trust graph at work. Only those addresses
+          appear below. Paste a stranger&apos;s address and we&apos;ll warn you.
         </p>
         <RecipientPicker
           value={recipient}

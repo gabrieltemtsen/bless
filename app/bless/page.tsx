@@ -12,8 +12,8 @@ export default function StartBlessingPage() {
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">Plant a new chain</h1>
         <p className="text-sm text-muted-foreground">
-          Pick someone you already trust, write one true sentence, and let a
-          little CRC carry it forward.
+          Pick someone who&apos;s trusted you on Circles, write one true
+          sentence, and let a little CRC carry it forward.
         </p>
       </header>
 

@@ -11,7 +11,7 @@ const geistMono = Geist_Mono({ variable: '--font-mono', subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'Bless — appreciation, on Circles trust',
   description:
-    'Send a small CRC blessing + one sentence to someone you trust. For gratitude, a task done, a kindness, a gift. If they bless someone back within 48h, the chain grows.',
+    'Send a small CRC blessing + one sentence to someone who trusts you on Circles. For gratitude, a task done, a kindness, a gift. If they bless someone back within 48h, the chain grows.',
   openGraph: {
     title: 'Bless — appreciation, on Circles trust',
     description:

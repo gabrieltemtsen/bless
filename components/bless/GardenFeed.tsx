@@ -50,7 +50,7 @@ export function GardenFeed() {
         <h3 className="text-base font-semibold">The garden is still bare.</h3>
         <p className="max-w-md text-sm text-muted-foreground">
           Be the first to start a chain. Send a small blessing and a story to
-          someone you trust — and watch where it grows.
+          someone who&apos;s trusted you on Circles — and watch where it grows.
         </p>
         <Link href="/bless">
           <Button size="lg">Plant the first seed</Button>
