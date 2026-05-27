@@ -1,53 +1,38 @@
-# Bless — garage submission copy
+# Bless — garage submission
 
-Drop these into the registration form at <https://garage.aboutcircles.com/register>.
-
-## Name
-
+**Name**
 Bless
 
-## One-line pitch (≤140 chars)
+**Live**
+https://bless-crc.vercel.app/
 
-Bless turns Circles trust into appreciation you can send. CRC + a sentence — for gratitude, a task done, a kindness. Chains grow for 48h.
+**Repo**
+https://github.com/gabrieltemtsen/bless
 
-## Longer pitch (≤500 chars)
+## Pitch (short)
 
-Bless makes the Circles trust graph spendable as kindness. Send a few CRC
-+ one sentence to someone who's trusted you on Circles — for gratitude,
-a favour returned, a task done, a gift. If they bless someone back along
-the chain within 48h, the chain grows into a public lineage of stories.
-If not, your thanks stands on its own. Every link is a real ERC-1155
-transfer on Hub v2. Built with `@aboutcircles/miniapp-sdk` (host bridge)
-and `@aboutcircles/sdk` (trust graph, profiles).
+Bless turns Circles trust into appreciation you can send. CRC + one sentence to someone who's trusted you. For gratitude, a task done, a kindness, a gift. If they bless someone back within 48 hours, the chain grows.
 
-## Live URL
+## Pitch (longer)
 
-`https://<your-vercel-deploy>.vercel.app`
+Trust on Circles is the most underused thing on the protocol. It's already a real list of people who've vouched for each other. I built Bless to use that list for something humans actually want, which is saying thanks.
 
-## Repo
+You send a small CRC blessing and one sentence to someone who's trusted you. They've got 48 hours to bless someone back along the chain. If they do, it grows into a public lineage of stories in the Garden. If they don't, it stops with them. Either way, no clawbacks, no shame. Every transfer is a real ERC-1155 `safeTransferFrom` on Hub v2 with a Gnosisscan link on every link, and the stories live off-chain so they stay easy to read.
 
-`https://github.com/<you>/bless`
+People use it for whatever moves them. Gratitude. A favour returned. A small task done. A birthday gift. An apology. Pay-it-forward chains for the days you feel like it.
 
-## What Circles primitives does this use?
+## Why it's a Circles app and not just any CRC app
 
-- **Trust graph** — Hub v2's acceptance rule is "I'll accept your CRC iff
-  I've trusted you", so the recipient picker queries
-  `getAggregatedTrustRelations` and filters for `trustedBy` +
-  `mutuallyTrusts` — i.e. people who've trusted the sender. Custom paste
-  addresses trigger an `isTrusted(recipient, sender)` check and a visible
-  warning when they'll revert. Plus a one-tap **Trust gabriel** pill in
-  the header so any visitor can extend the maker's circle.
-- **Personal CRC** — every forward is an actual
-  `Hub_v2.safeTransferFrom(sender, recipient, uint256(sender), amount, '0x')`,
-  routed through the host's Safe via `sendTransactions()`.
-- **EIP-1271 attestations** — every API write is gated by a host
-  `signMessage()` call referencing the txHash + recipient + chainId,
-  re-verified server-side with viem `publicClient.verifyMessage`.
+A direct ERC-1155 transfer on Hub v2 reverts unless the recipient has already trusted the sender. Most apps would see that as a constraint to route around. Bless treats it as the point.
 
-## What's unique?
+The recipient picker only surfaces people who've trusted you, pulled from the live trust graph. Custom paste addresses trigger an `isTrusted(recipient, sender)` check and a visible warning when they'd revert. There's a one-tap Trust pill in the header so visitors can grow the maker's circle from inside the app. The 48 hour forward window turns the transfer into a small social ritual.
 
-The 48-hour wilt-or-forward window turns a normal token transfer into a
-social ritual. No escrow, no clawback — the CRC genuinely stays with
-whoever held it last. The mechanism is purely the public record of broken
-chains, which is exactly the kind of soft accountability the Circles
-trust graph was built for.
+## Stack
+
+Next.js 15, React 19, TypeScript. `@aboutcircles/miniapp-sdk` handles the wallet bridge (`onWalletChange`, `signMessage`, `sendTransactions`). `@aboutcircles/sdk` covers profile lookups and trust graph reads. viem encodes the Hub v2 calldata and verifies the EIP-1271 signatures that gate every API write so signatures can't be replayed. Upstash Redis for chain persistence in production, with an in-memory fallback for local dev.
+
+## Testing it
+
+Open https://bless-crc.vercel.app/ in any browser. The Garden is fully browsable without a wallet, so you can read every chain and click through to its lineage tree. To actually send or forward, tap **Open in Circles host** at the top of the page to launch the playground with Bless pre-loaded.
+
+If you haven't trusted me yet, the Trust pill in the header does it in one tap. Ping me after and I'll send a starter blessing so you can try forwarding it.
