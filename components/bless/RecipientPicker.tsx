@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProfileChip } from '@/components/profile/ProfileChip';
 import { useWallet } from '@/hooks/use-wallet';
-import { isTrustedBy } from '@/lib/circles';
+import { diagnoseReachability, isTrustedBy } from '@/lib/circles';
 import { cn } from '@/lib/utils';
 import { isAddress } from 'viem';
 
@@ -44,19 +44,29 @@ export function RecipientPicker({
       try {
         const { Sdk } = await import('@aboutcircles/sdk');
         const sdk = new Sdk();
-        // Circles v2 acceptance rule for direct ERC1155 transfers:
-        //   the *recipient* must trust the *issuer* of the token being sent.
-        // We're sending the sender's own personal CRC, so the recipient must
-        // have trusted the sender. That means we want people who've trusted
-        // *us* — `trustedBy` and `mutuallyTrusts` rows. Anything else and
-        // Hub v2 will revert the transfer at simulation time.
+        // We now route blessings through Hub v2's flow matrix (pathfinding),
+        // so the recipient no longer needs to trust the sender *directly* —
+        // they just need to be reachable through the trust graph. That
+        // makes any avatar the user has a trust relation with a plausible
+        // recipient. We include all three relation kinds and let the
+        // pathfinder decide reachability at send time.
         const rel = await sdk.rpc.trust.getAggregatedTrustRelations(address);
         if (cancelled) return;
-        const rows: TrustRow[] = (rel ?? [])
-          .filter(
-            (r) => r.relation === 'trustedBy' || r.relation === 'mutuallyTrusts'
-          )
-          .map((r) => ({ address: r.objectAvatar.toLowerCase() as Hex }));
+        const seen = new Set<string>();
+        const rows: TrustRow[] = [];
+        for (const r of rel ?? []) {
+          if (
+            r.relation !== 'trusts' &&
+            r.relation !== 'trustedBy' &&
+            r.relation !== 'mutuallyTrusts'
+          ) {
+            continue;
+          }
+          const a = r.objectAvatar.toLowerCase() as Hex;
+          if (seen.has(a)) continue;
+          seen.add(a);
+          rows.push({ address: a });
+        }
         setTrusts(rows);
       } catch (err) {
         setLoadErr(err instanceof Error ? err.message : 'Failed to load trust list');
@@ -84,15 +94,30 @@ export function RecipientPicker({
     return q.toLowerCase() as Hex;
   }, [query]);
 
-  // If the user pasted a custom address, check whether *they* trust *us* —
-  // that's the on-chain prerequisite for accepting our CRC.
+  // If the user pasted a custom address, ask the pathfinder whether the
+  // sender can currently route *any* CRC to them. We use a tiny amount
+  // (1 wei) so we're really asking "does any path exist?" — the actual
+  // amount the user chose is preflight-checked at submit time.
   useEffect(() => {
     setPastedTrustOk(null);
     if (!pasteCandidate || !address) return;
     let cancelled = false;
-    isTrustedBy(address, pasteCandidate).then((ok) => {
-      if (!cancelled) setPastedTrustOk(ok);
-    });
+    diagnoseReachability(address, pasteCandidate, '0.000000000000000001')
+      .then((dx) => {
+        if (cancelled) return;
+        // Fall back to the direct-trust check if the pathfinder errors out
+        // (e.g. RPC blip) — better some signal than none.
+        if (!dx.recipientIsV2Registered && !dx.reachable) {
+          isTrustedBy(address, pasteCandidate).then((ok) => {
+            if (!cancelled) setPastedTrustOk(ok);
+          });
+          return;
+        }
+        setPastedTrustOk(dx.reachable);
+      })
+      .catch(() => {
+        if (!cancelled) setPastedTrustOk(null);
+      });
     return () => {
       cancelled = true;
     };
@@ -125,10 +150,10 @@ export function RecipientPicker({
           onSelect={() => onChange(pasteCandidate)}
           subtitle={
             pastedTrustOk === null
-              ? 'Checking trust…'
+              ? 'Checking trust graph…'
               : pastedTrustOk
-              ? 'They trust you ✓'
-              : '⚠ They haven’t trusted you — transfer will revert'
+              ? 'Reachable through the trust graph ✓'
+              : '⚠ No route through the trust graph from your CRC'
           }
           warn={pastedTrustOk === false}
         />
@@ -147,7 +172,7 @@ export function RecipientPicker({
           <div className="rounded-2xl border border-dashed border-border bg-background/60 px-4 py-6 text-center text-sm text-muted-foreground">
             <AlertCircle className="mx-auto mb-1 size-4" />
             {trusts.length === 0
-              ? "Nobody trusts you yet. Ask a friend to add your address in the Circles app, then come back — they have to trust you before they can receive your CRC."
+              ? "You have no trust relations in Circles yet. Trust a few people in the Circles app (or ask a friend to trust you), then come back — those connections form the graph blessings travel through."
               : 'No matches — try pasting an address.'}
           </div>
         )}

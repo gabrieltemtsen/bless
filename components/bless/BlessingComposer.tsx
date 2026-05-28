@@ -9,8 +9,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RecipientPicker } from '@/components/bless/RecipientPicker';
 import { useWallet } from '@/hooks/use-wallet';
-import { buildBlessingTx, hasCrcBalance, isTrustedBy } from '@/lib/circles';
-import { formatCrc } from '@/lib/format';
+import {
+  tryBuildPathTransfer,
+  diagnoseSender,
+  diagnoseReachability,
+  explainBlessingFailure,
+} from '@/lib/circles';
 
 type Hex = `0x${string}`;
 
@@ -35,13 +39,27 @@ const BLOCK_EXPLORER = 'https://gnosisscan.io';
  */
 function explainSendError(raw: string): string {
   const lower = raw.toLowerCase();
+  // Pathfinder-flavored failures: "no flow", "path not found", "maxFlow" etc.
+  if (
+    lower.includes('no path') ||
+    lower.includes('no flow') ||
+    lower.includes('maxflow') ||
+    lower.includes('max flow') ||
+    lower.includes('pathfind')
+  ) {
+    return (
+      'No route through the Circles trust graph reaches this recipient ' +
+      'from any CRC you currently hold. Either the recipient (or someone ' +
+      'they trust) needs to trust an issuer of CRC in your wallet, or ' +
+      'you need a bit of CRC from someone they already trust. The Circles ' +
+      'app can show whose tokens you hold.'
+    );
+  }
   if (lower.includes('useroperation reverted') || lower.includes('execution reverted')) {
     return (
-      'The Circles Hub refused this transfer. The most likely cause is ' +
-      'that the recipient hasn’t trusted you yet, or your account hasn’t ' +
-      'minted any personal CRC. Both are easy fixes — open the Circles ' +
-      'app, ask your recipient to trust your address, and mint your daily ' +
-      'CRC if you haven’t.'
+      'The Circles Hub rejected the transfer at submit time. The trust ' +
+      'graph may have shifted between preflight and send, or the host ' +
+      'sponsored gas check failed. Try again in a moment.'
     );
   }
   if (lower.includes('user rejected') || lower.includes('rejected')) {
@@ -142,46 +160,48 @@ export function BlessingComposer({
     if (!address || !recipient) return;
 
     try {
-      // 0. Pre-flight: avoid sending a UserOperation we know will revert.
-      //    These two RPC reads catch the two most common host-side errors
-      //    ("recipient hasn't trusted you" + "you have no CRC to send")
-      //    before they reach the Circles host as raw simulation reverts.
+      // 0. Pre-flight: build a *path-based* transfer through the Circles
+      //    trust graph. This works whether the sender holds their own
+      //    personal CRC or just other people's CRC that can be routed to
+      //    the recipient via Hub v2's operateFlowMatrix. The pathfinder
+      //    figures out which tokens to use.
+      //
+      //    If pathfinding succeeds we get back one or more txs ready to
+      //    submit; if it fails we run a structured diagnosis so the user
+      //    sees a specific failure mode (V1 CRC, no path, unregistered
+      //    recipient, etc.) rather than a generic pathfinder error.
       setStatus({ kind: 'preflight' });
 
-      const [trusts, balance] = await Promise.all([
-        isTrustedBy(address, recipient),
-        hasCrcBalance(address, address, amount),
-      ]);
-
-      if (!trusts) {
-        throw new Error(
-          'This recipient hasn’t trusted you in Circles yet. Until they do, ' +
-            'the Hub won’t let them receive your personal CRC. Ask them to add ' +
-            'your address (' +
-            address.slice(0, 6) +
-            '…' +
-            address.slice(-4) +
-            ') in the Circles app, then try again.'
-        );
-      }
-      if (!balance.ok) {
-        throw new Error(
-          'You only have ' +
-            formatCrc(Number(balance.balanceWei) / 1e18) +
-            ' CRC of your own personal token, but this blessing needs ' +
-            amount +
-            '. Mint your daily CRC in the Circles app first.'
-        );
+      const built = await tryBuildPathTransfer({
+        from: address,
+        to: recipient,
+        amount,
+      });
+      if (!built.ok) {
+        // Pathfinder said no — figure out *which* of the four failure modes
+        // we're in and surface a targeted message. Both diagnostic calls
+        // run in parallel to keep the wait short.
+        const [senderDx, reachDx] = await Promise.all([
+          diagnoseSender(address),
+          diagnoseReachability(address, recipient, amount),
+        ]);
+        // Log the full structured diagnosis for support / debugging.
+        // (User only sees the explanation string.)
+        console.warn('[bless] blessing preflight failed', {
+          sender: senderDx,
+          reachability: reachDx,
+          amount,
+        });
+        throw new Error(explainBlessingFailure(senderDx, reachDx, amount));
       }
 
-      // 1. Build the on-chain CRC transfer (Hub v2 ERC1155 safeTransferFrom).
-      const tx = buildBlessingTx({ from: address, to: recipient, amount });
-
-      // 2. Submit it through the Circles host's Safe.
+      // 1. Submit the (possibly multi-step) transfer through the host's Safe.
       setStatus({ kind: 'sending' });
       const { sendTransactions } = await import('@aboutcircles/miniapp-sdk');
-      const txHashes = await sendTransactions([tx]);
-      const txHash = txHashes[0] as Hex;
+      const txHashes = await sendTransactions(built.txs);
+      // For multi-tx flows we take the last hash as the "settling" tx —
+      // that's the one that delivers value to the recipient.
+      const txHash = txHashes[txHashes.length - 1] as Hex;
       if (!txHash) throw new Error('Host returned no tx hash');
 
       // 3. Ask the host to sign an off-chain attestation that lets our
