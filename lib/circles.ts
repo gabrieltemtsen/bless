@@ -533,3 +533,134 @@ export function explainBlessingFailure(
   // surface the raw reason just in case the SDK errored after preflight.
   return reach.reason ?? 'Unknown blessing failure.';
 }
+
+// ─── Trust-graph reach ──────────────────────────────────────────────────────
+//
+// A blessing chain lives *on* the Circles trust graph, so a natural measure of
+// how far it has spread is graph-shaped, not just "how many links." These
+// helpers use the Circles SDK's aggregated trust relations
+// (`getAggregatedTrustRelations`) — the same indexed view the Circles app uses
+// — to answer two questions:
+//
+//   • Frontier: how many distinct avatars trust at least one participant, i.e.
+//     how many people the chain could be forwarded to *next*.
+//   • Cohesion: how many of the chain's own participants mutually trust each
+//     other, i.e. how tightly knit the lineage already is.
+//
+// Docs: https://docs.aboutcircles.com → SDK → "Trust relations".
+
+export interface ChainReach {
+  /** Distinct chain participants we resolved trust data for. */
+  participants: number;
+  /**
+   * Size of the union of everyone who trusts at least one participant
+   * (excluding participants themselves) — the chain's spreadable frontier.
+   */
+  frontier: number;
+  /** Trust edges among the participants themselves (cohesion). */
+  internalTrustEdges: number;
+  /** True when at least one SDK read succeeded (so the UI can show "—" else). */
+  resolved: boolean;
+}
+
+interface AggregatedRelation {
+  objectAvatar?: string;
+  relation?: string;
+}
+
+/**
+ * Compute the trust-graph reach of a set of chain participants.
+ *
+ * Resilient by design: each per-avatar SDK read is wrapped, so a single
+ * indexer hiccup degrades the number rather than throwing. Runs the lookups
+ * concurrently.
+ */
+export async function getChainReach(addresses: Address[]): Promise<ChainReach> {
+  const participants = Array.from(
+    new Set(addresses.map((a) => a.toLowerCase()))
+  ) as Address[];
+  const participantSet = new Set<string>(participants);
+
+  const out: ChainReach = {
+    participants: participants.length,
+    frontier: 0,
+    internalTrustEdges: 0,
+    resolved: false,
+  };
+  if (participants.length === 0) return out;
+
+  try {
+    const { Sdk } = await import('@aboutcircles/sdk');
+    const sdk = new Sdk();
+
+    const frontier = new Set<string>();
+    const results = await Promise.all(
+      participants.map((addr) =>
+        sdk.rpc.trust
+          .getAggregatedTrustRelations(addr)
+          .then((rels: AggregatedRelation[]) => ({ addr, rels: rels ?? [] }))
+          .catch(() => ({ addr, rels: [] as AggregatedRelation[] }))
+      )
+    );
+
+    let anyOk = false;
+    for (const { addr, rels } of results) {
+      if (rels.length > 0) anyOk = true;
+      for (const r of rels) {
+        const other = r.objectAvatar?.toLowerCase();
+        if (!other) continue;
+        // Someone who trusts this participant (could receive a forward).
+        const trustsParticipant =
+          r.relation === 'trustedBy' || r.relation === 'mutuallyTrusts';
+        if (trustsParticipant && !participantSet.has(other)) {
+          frontier.add(other);
+        }
+        // Edge between two people already in the chain.
+        if (
+          r.relation === 'mutuallyTrusts' &&
+          participantSet.has(other) &&
+          other > addr.toLowerCase() // count each undirected edge once
+        ) {
+          out.internalTrustEdges++;
+        }
+      }
+    }
+
+    out.frontier = frontier.size;
+    out.resolved = anyOk;
+  } catch {
+    /* leave defaults; resolved stays false */
+  }
+
+  return out;
+}
+
+/**
+ * Read the demurraged ("inflationary"→"static") present value of an avatar's
+ * total CRC holdings via the SDK's balance view. Returned in human CRC units.
+ * Falls back to `null` if the indexer can't be reached so callers can hide the
+ * figure rather than show a wrong zero.
+ */
+export async function getTotalCrcBalance(address: Address): Promise<number | null> {
+  if (!isAddress(address)) return null;
+  try {
+    const { Sdk } = await import('@aboutcircles/sdk');
+    const sdk = new Sdk();
+    const avatar = await sdk.getAvatar(address).catch(() => null);
+    if (!avatar) return null;
+    // `getTotalBalance` returns demurraged CRC (the figure the Circles wallet
+    // shows). Different SDK minors expose it on the avatar or the rpc balance
+    // module, so we try both.
+    const maybe = avatar as unknown as {
+      getTotalBalance?: () => Promise<number | string>;
+    };
+    if (typeof maybe.getTotalBalance === 'function') {
+      const bal = await maybe.getTotalBalance();
+      const n = typeof bal === 'string' ? Number(bal) : bal;
+      return Number.isFinite(n) ? n : null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}

@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ChainTree } from '@/components/bless/ChainTree';
+import { ChainStats } from '@/components/bless/ChainStats';
 import { CountdownPill } from '@/components/bless/CountdownPill';
 import { ProfileChip } from '@/components/profile/ProfileChip';
 import { deriveStatus } from '@/lib/status';
@@ -64,6 +65,8 @@ export default async function ChainPage({ params }: PageProps) {
           )}
         </CardContent>
       </Card>
+
+      <ChainStats chain={chain} />
 
       <ChainTree chain={chain} />
 

@@ -35,6 +35,29 @@ Story metadata (the actual sentences, the chain's title, the lineage)
 lives off-chain in a tiny KV. The on-chain tx hash on every link is the
 verifiable receipt; the off-chain story is the soul.
 
+### Circles primitives, made visible
+
+We don't just *use* the trust graph and demurrage — we surface them so the
+mechanism is legible to anyone looking at a chain:
+
+- **Live demurrage.** Every held blessing shows its value decaying in real
+  time, computed with the Circles v2 daily retention factor
+  `GAMMA = 0.9998013320085989` (`lib/demurrage.ts`), which compounds to
+  exactly −7 %/yr. A chain left sitting visibly shrinks — the protocol's
+  signature primitive turned into a UI element, not a footnote.
+- **Trust-graph reach.** Each chain reports how far it could spread next:
+  we pull every participant's `getAggregatedTrustRelations` from the
+  Circles SDK (`lib/circles.ts → getChainReach`) and count the union of
+  avatars who trust *someone* in the chain — its spreadable frontier — plus
+  the mutual-trust edges among participants (cohesion).
+- **Garden insights.** The home page aggregates the whole graph: total CRC
+  moved, people touched, chains still blooming vs. wilted, and the longest
+  lineage (`lib/chain-stats.ts`).
+
+The lineage itself renders as an animated, blooming **vine** — a sprout at
+the root, a live breathing bud at the current holder, momentum chips
+(`passed on after 3h`) between every link.
+
 ---
 
 ## How a chain flows

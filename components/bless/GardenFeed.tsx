@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { ChainCard } from '@/components/bless/ChainCard';
+import { GardenStats } from '@/components/bless/GardenStats';
 import type { Chain } from '@/lib/types';
 
 export function GardenFeed() {
@@ -59,10 +60,13 @@ export function GardenFeed() {
     );
   }
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {chains.map((c) => (
-        <ChainCard key={c.id} chain={c} />
-      ))}
+    <div className="flex flex-col gap-5">
+      <GardenStats chains={chains} />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {chains.map((c) => (
+          <ChainCard key={c.id} chain={c} />
+        ))}
+      </div>
     </div>
   );
 }
